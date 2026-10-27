@@ -1,0 +1,66 @@
+/* Diseño de pantalla para celular. Colores, letras y controles vienen de ../comun/estilos.css */
+body.movil {
+  display: block; height: 100dvh; overflow: hidden; font-size: 15px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Barra superior con el logo */
+.topbar {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 5;
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: calc(6px + env(safe-area-inset-top)) 12px 6px; background: var(--amarillo);
+}
+.topbar .logo { height: 44px; width: auto; flex: none; }
+.topbar .seg button { padding: 6px 10px; white-space: nowrap; font-size: 14px; }
+
+/* Vista 3D a pantalla completa entre las dos barras */
+.movil main {
+  position: fixed; left: 0; right: 0;
+  top: calc(56px + env(safe-area-inset-top)); bottom: calc(60px + env(safe-area-inset-bottom));
+  display: flex; flex-direction: column;
+}
+.movil .view { flex: 1; min-height: 0; touch-action: none; }
+.movil #view2d { padding: 12px; }
+.movil .empty { inset: 0; padding: 24px; }
+.chip {
+  position: absolute; z-index: 2; left: 10px; bottom: 10px; max-width: calc(100% - 20px);
+  background: rgba(255, 255, 255, .9); border: 1px solid var(--line); border-radius: 999px;
+  padding: 3px 10px; font-size: 13px;
+}
+.chip:empty { display: none; }
+.movil #warnings:not(:empty) { font-size: 13px; padding: 6px 12px; }
+
+/* Barra inferior: ajustes y guardar */
+.bottombar {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 7;
+  display: flex; gap: 8px; padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
+  background: var(--panel); border-top: 1px solid var(--line);
+}
+.bottombar button { min-height: 44px; font-size: 15px; }
+.bottombar #sheetToggle { flex: 1; }
+.bottombar #dl3mf { flex: 1.3; }
+
+/* Panel de ajustes que sube desde abajo */
+.movil #panel.sheet {
+  position: fixed; left: 0; right: 0; bottom: calc(60px + env(safe-area-inset-bottom)); z-index: 6;
+  width: auto; max-height: 72dvh; padding: 0; overflow: hidden;
+  display: flex; flex-direction: column;
+  border: 0; border-top: 1px solid var(--line); border-radius: 18px 18px 0 0;
+  box-shadow: 0 -8px 24px rgba(43, 43, 43, .15);
+  transform: translateY(calc(100% + 80px)); transition: transform .25s ease;
+}
+.movil #panel.sheet.open { transform: none; }
+.sheet-grip { flex: none; border: 0; background: transparent; padding: 10px 0 6px; width: 100%; }
+.sheet-grip span { display: block; width: 44px; height: 5px; border-radius: 3px; background: var(--line); margin: 0 auto; }
+.sheet-body { overflow-y: auto; padding: 0 16px 16px; overscroll-behavior: contain; }
+.movil .filename #name { width: 100%; }
+
+/* Controles más grandes para el dedo */
+.movil .row { grid-template-columns: 1fr 84px; margin-bottom: 12px; }
+.movil .row.check { grid-template-columns: auto 1fr; align-items: center; }
+.movil .row input[type=number], .movil select, .movil input, .movil textarea { min-height: 38px; font-size: 16px; }
+.movil .row input[type=range] { height: 28px; }
+.movil .row.check input { width: 22px; height: 22px; min-height: 0; }
+.movil .seg button { min-height: 40px; }
+.movil .sw { width: 34px; height: 34px; }
+.movil .fp-list { max-height: 45dvh; }

@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Diseñador · Nébela Studio</title>
+  <!-- Versión móvil (app instalable). Usa la misma lógica que la de escritorio: ../comun -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#E8D84A">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Nébela">
+  <link rel="apple-touch-icon" href="iconos/icono-180.png">
+  <link rel="icon" href="iconos/icono-192.png">
+  <link rel="stylesheet" href="../comun/estilos.css">
+  <link rel="stylesheet" href="movil.css">
+  <script src="../comun/libs/clipper.js"></script>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "../comun/libs/three.module.js",
+      "three/addons/controls/OrbitControls.js": "../comun/libs/OrbitControls.js",
+      "fflate": "../comun/libs/fflate.js",
+      "opentype.js": "../comun/libs/opentype.module.js"
+    }
+  }
+  </script>
+</head>
+<body class="movil">
+  <header class="topbar">
+    <svg class="logo" viewBox="0 0 600 220" role="img" aria-label="Nébela Studio">
+      <text x="300" y="145" font-family="Pacifico, cursive" font-size="110" text-anchor="middle" letter-spacing="2"><tspan fill="#3BBFB0">né</tspan><tspan fill="#F0196E">bela</tspan></text>
+      <text x="300" y="192" font-family="'DM Sans', sans-serif" font-size="22" font-weight="300" fill="#F0196E" opacity="0.6" text-anchor="middle" letter-spacing="10">STUDIO</text>
+    </svg>
+    <div class="seg small" id="viewSeg">
+      <button data-view="3d" class="on">3D</button>
+      <button data-view="2d">Vista de arriba</button>
+    </div>
+  </header>
+
+  <main>
+    <div id="warnings"></div>
+    <span id="size" class="chip"></span>
+    <div id="view3d" class="view"></div>
+    <div id="view2d" class="view" hidden></div>
+    <div id="empty" class="empty">Tocá <b>Ajustes</b> para subir una imagen o escribir un texto.<br><small>Lo oscuro de la imagen se convierte en relieve.</small></div>
+  </main>
+
+  <!-- Panel de ajustes: se abre desde abajo -->
+  <aside id="panel" class="sheet" aria-label="Ajustes">
+    <button type="button" class="sheet-grip" id="sheetGrip" aria-label="Cerrar ajustes"><span></span></button>
+    <div class="sheet-body">
+      <section>
+        <label class="drop" id="drop">
+          <input type="file" id="file" accept="image/png,image/jpeg,image/webp,image/svg+xml">
+          <span id="dropText">Elegí una imagen o sacá una foto<br><small>PNG, JPG, WebP o SVG</small></span>
+        </label>
+        <button id="clearImg" class="link" hidden>Quitar imagen</button>
+      </section>
+
+      <section>
+        <h2>Qué querés hacer</h2>
+        <div class="seg" id="modeSeg">
+          <button data-mode="stamp" class="on">Sello</button>
+          <button data-mode="both">Cortante + sello</button>
+          <button data-mode="cutter">Cortante</button>
+          <button data-mode="roller">Rodillo</button>
+        </div>
+      </section>
+
+      <div id="controls"></div>
+
+      <section class="filename">
+        <h2>Nombre del archivo</h2>
+        <input id="name" value="sello" aria-label="Nombre del archivo">
+      </section>
+    </div>
+  </aside>
+
+  <nav class="bottombar">
+    <button type="button" id="sheetToggle">Ajustes</button>
+    <button id="dl3mf" class="primary" disabled>Guardar 3MF</button>
+    <button id="dlstl" disabled>STL</button>
+  </nav>
+
+  <script type="module" src="../comun/js/app.js"></script>
+  <script type="module" src="movil.js"></script>
+</body>
+</html>

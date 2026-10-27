@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Diseñador de sellos · Nébela Studio</title>
+  <!-- Versión de escritorio. La lógica y los estilos de marca están en ../comun (compartidos con la app móvil). -->
+  <link rel="stylesheet" href="../comun/estilos.css">
+  <script src="../comun/libs/clipper.js"></script>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "../comun/libs/three.module.js",
+      "three/addons/controls/OrbitControls.js": "../comun/libs/OrbitControls.js",
+      "fflate": "../comun/libs/fflate.js",
+      "opentype.js": "../comun/libs/opentype.module.js"
+    }
+  }
+  </script>
+</head>
+<body>
+  <aside id="panel">
+    <header class="brand">
+      <!-- Logo de Nébela Studio sobre amarillo: "né" turquesa, "bela" y "STUDIO" fucsia -->
+      <svg viewBox="0 0 600 220" role="img" aria-label="Nébela Studio">
+        <text x="300" y="145" font-family="Pacifico, cursive" font-size="110" text-anchor="middle" letter-spacing="2"><tspan fill="#3BBFB0">né</tspan><tspan fill="#F0196E">bela</tspan></text>
+        <text x="300" y="192" font-family="'DM Sans', sans-serif" font-size="22" font-weight="300" fill="#F0196E" opacity="0.6" text-anchor="middle" letter-spacing="10">STUDIO</text>
+      </svg>
+      <h1>Diseñador de sellos, cortantes y rodillos</h1>
+    </header>
+
+    <section>
+      <label class="drop" id="drop">
+        <input type="file" id="file" accept="image/png,image/jpeg,image/webp,image/svg+xml">
+        <span id="dropText">Elegí o arrastrá una imagen<br><small>PNG, JPG, WebP o SVG</small></span>
+      </label>
+      <button id="clearImg" class="link" hidden>Quitar imagen</button>
+    </section>
+
+    <section>
+      <h2>Qué querés hacer</h2>
+      <div class="seg" id="modeSeg">
+        <button data-mode="stamp" class="on">Sello</button>
+        <button data-mode="both">Cortante + sello</button>
+        <button data-mode="cutter">Cortante</button>
+        <button data-mode="roller">Rodillo</button>
+      </div>
+    </section>
+
+    <div id="controls"></div>
+  </aside>
+
+  <main>
+    <div class="toolbar">
+      <div class="seg small" id="viewSeg">
+        <button data-view="3d" class="on">3D</button>
+        <button data-view="2d">Vista de arriba</button>
+      </div>
+      <span id="size"></span>
+      <span class="spacer"></span>
+      <input id="name" value="sello" title="Nombre del archivo">
+      <button id="dl3mf" class="primary" disabled>Descargar 3MF</button>
+      <button id="dlstl" disabled>STL</button>
+    </div>
+    <div id="warnings"></div>
+    <div id="view3d" class="view"></div>
+    <div id="view2d" class="view" hidden></div>
+    <div id="empty" class="empty">Subí una imagen o agregá un texto para empezar.<br><small>Lo oscuro de la imagen se convierte en relieve.</small></div>
+  </main>
+
+  <script type="module" src="../comun/js/app.js"></script>
+</body>
+</html>

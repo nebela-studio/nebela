@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Diseñador de sellos · Nébela Studio</title>
+  <script>
+    // Lleva a la versión que corresponde al dispositivo
+    const movil = matchMedia('(pointer: coarse)').matches && Math.min(screen.width, screen.height) < 820;
+    location.replace(movil ? 'movil/' : 'escritorio/');
+  </script>
+</head>
+<body>
+  <p><a href="escritorio/">Versión de escritorio</a> · <a href="movil/">Versión para celular</a></p>
+</body>
+</html>
