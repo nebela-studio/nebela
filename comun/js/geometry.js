@@ -43,13 +43,15 @@ function toExPolys(paths) {
       if (ch.IsHole()) continue;
       res.push({
         outer: fromClip(C.Clipper.CleanPolygon(ch.Contour(), 0.002 * SC)),
-        holes: ch.Childs().map((h) => fromClip(C.Clipper.CleanPolygon(h.Contour(), 0.002 * SC))),
+        // al limpiar, un agujero diminuto puede quedar sin área: se descarta (si no, el triangulador falla)
+        holes: ch.Childs().map((h) => fromClip(C.Clipper.CleanPolygon(h.Contour(), 0.002 * SC)))
+          .filter((h) => h.length >= 3 && Math.abs(signedArea(h)) > 1e-6),
       });
       for (const h of ch.Childs()) walk(h);
     }
   };
   walk(tree);
-  return res.filter((e) => e.outer.length >= 3);
+  return res.filter((e) => e.outer.length >= 3 && Math.abs(signedArea(e.outer)) > 1e-6);
 }
 
 // Solo los contornos exteriores, rellenando agujeros.

@@ -5,7 +5,9 @@ const CACHE = 'disenador-nebela';
 
 const FONTS = ['pacifico', 'dancing-script', 'great-vibes', 'sacramento', 'satisfy', 'cookie', 'courgette',
   'kaushan-script', 'lobster', 'caveat', 'patrick-hand', 'amatic-sc', 'playfair-display', 'poppins',
-  'montserrat', 'quicksand', 'comfortaa', 'fredoka', 'baloo-2', 'oswald'];
+  'montserrat', 'quicksand', 'comfortaa', 'fredoka', 'baloo-2', 'oswald',
+  'norican', 'yesteryear', 'oleo-script', 'pattaya', 'caveat-brush', 'kalam', 'knewave',
+  'covered-by-your-grace', 'just-another-hand', 'sue-ellen-francisco', 'mali', 'barlow-semi-condensed'];
 
 // Todo lo que la app necesita para funcionar sin conexión
 const FILES = [

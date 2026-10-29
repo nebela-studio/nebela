@@ -2,22 +2,38 @@
 import { parse } from 'opentype.js';
 
 // [id, nombre, versión de @fontsource, peso]
+// Todas con licencia libre (SIL Open Font License o Apache 2.0): se pueden usar para vender y publicar.
 const LIST = [
+  // cursivas
   ['pacifico', 'Pacifico', '5.2.7', 400],
   ['dancing-script', 'Dancing Script', '5.2.8', 400],
   ['great-vibes', 'Great Vibes', '5.2.8', 400],
+  ['norican', 'Norican', '5.2.7', 400],
   ['sacramento', 'Sacramento', '5.2.8', 400],
   ['satisfy', 'Satisfy', '5.2.7', 400],
+  ['yesteryear', 'Yesteryear', '5.2.8', 400],
   ['cookie', 'Cookie', '5.2.7', 400],
   ['courgette', 'Courgette', '5.2.7', 400],
   ['kaushan-script', 'Kaushan Script', '5.2.8', 400],
   ['lobster', 'Lobster', '5.2.8', 400],
+  ['oleo-script', 'Oleo Script', '5.2.7', 700],
+  ['pattaya', 'Pattaya', '5.2.8', 400],
+  // a mano
   ['caveat', 'Caveat', '5.2.8', 400],
+  ['caveat-brush', 'Caveat Brush', '5.2.8', 400],
+  ['kalam', 'Kalam', '5.2.8', 700],
+  ['knewave', 'Knewave', '5.2.7', 400],
   ['patrick-hand', 'Patrick Hand', '5.2.8', 400],
+  ['covered-by-your-grace', 'Covered By Your Grace', '5.2.8', 400],
+  ['just-another-hand', 'Just Another Hand', '5.2.8', 400],
+  ['sue-ellen-francisco', 'Sue Ellen Francisco', '5.2.8', 400],
   ['amatic-sc', 'Amatic SC', '5.2.7', 400],
+  ['mali', 'Mali', '5.2.8', 300],
+  // de imprenta
   ['playfair-display', 'Playfair Display', '5.2.8', 400],
   ['poppins', 'Poppins', '5.2.7', 700],
   ['montserrat', 'Montserrat', '5.2.8', 700],
+  ['barlow-semi-condensed', 'Barlow Semi Condensed', '5.2.7', 700],
   ['quicksand', 'Quicksand', '5.2.10', 700],
   ['comfortaa', 'Comfortaa', '5.2.8', 700],
   ['fredoka', 'Fredoka', '5.2.10', 700],

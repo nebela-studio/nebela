@@ -1,3 +1,5 @@
 # Archivos que no se publican
 _prueba/
 *.tmp
+# Tipografías con licencia de uso personal: nunca se suben al sitio público
+Tipografías/
