@@ -62,16 +62,16 @@ const PARAMS = [
   { id: 'reliefHeight', label: 'Altura del relieve', unit: 'mm', type: 'range', min: 0.4, max: 5, step: 0.1, def: 1.7 },
   { id: 'reliefInset', label: 'Separar relieve del borde', unit: 'mm', type: 'range', min: 0, max: 3, step: 0.05, def: 0 },
   { id: 'stampClearance', label: 'Holgura sello / cortante', unit: 'mm', type: 'range', min: 0, max: 3, step: 0.05, def: 0.9, show: ['both'] },
-  { id: 'stampColor', label: 'Color del cuerpo', type: 'color', def: '#3BBFB0' },
-  { id: 'reliefColor', label: 'Color del relieve', type: 'color', def: '#F0196E',
-    hint: 'En el 3MF, cuerpo y relieve van como partes separadas con estos colores, así en Bambu Studio les asignás un filamento a cada una. El STL no guarda colores.' },
+  { id: 'stampColor', label: 'Color de la base y el mango', type: 'color', def: '#3BBFB0' },
+  { id: 'reliefColor', label: 'Color del relieve', type: 'seg', def: '#FFFFFF',
+    options: [['#FFFFFF', 'Blanco'], ['#000000', 'Negro']],
+    hint: 'Los colores quedan en el nombre del 3MF. En el archivo, base y relieve van como partes separadas: en Bambu Studio les asignás un filamento a cada una. El STL no guarda colores.' },
 
   { group: 'Mango', show: ['stamp', 'both'] },
   { id: 'socket', label: 'Encastre para mango', type: 'check', def: true },
   { id: 'includeHandle', label: 'Incluir un mango para imprimir', type: 'check', def: false },
   { id: 'handleLength', label: 'Largo del mango', unit: 'mm', type: 'range', min: 10, max: 80, step: 0.5, def: 23.5, showIf: (p) => p.includeHandle },
   { id: 'handleDiameter', label: 'Grosor del mango (diámetro)', unit: 'mm', type: 'range', min: 6, max: 30, step: 0.5, def: 10, showIf: (p) => p.includeHandle },
-  { id: 'handleColor', label: 'Color del mango', type: 'color', def: '#9ACD32', showIf: (p) => p.includeHandle },
   { id: 'threadSize', label: 'Tamaño de la rosca', unit: 'mm', type: 'range', min: 5, max: 20, step: 0.01, def: 9.58,
     showIf: (p) => p.socket || p.includeHandle,
     hint: 'Con 9,58 mm encaja con los mangos que ya tenés impresos. Si lo cambiás, imprimí un mango nuevo con la misma medida.' },
@@ -94,6 +94,8 @@ PARAMS.forEach((d) => { if (d.id) P[d.id] = d.def; });
 try { Object.assign(P, JSON.parse(localStorage.getItem(STORE_KEY) || '{}')); } catch { /* sin guardado */ }
 // las tipografías propias no se guardan entre sesiones
 if (P.font.startsWith('propia:')) P.font = 'pacifico';
+// el relieve ahora es solo blanco o negro: los colores guardados de antes vuelven a blanco
+if (P.reliefColor !== '#000000') P.reliefColor = '#FFFFFF';
 const customFonts = [];
 
 const $ = (s) => document.querySelector(s);
@@ -175,6 +177,10 @@ function renderControls() {
           alert('No pude leer esa tipografía. Probá con un archivo .ttf u .otf.');
         }
       };
+    } else if (d.type === 'seg') {
+      row.innerHTML = `<label>${d.label}</label>
+        <div class="seg" style="grid-column:1/-1">${d.options.map(([v, t]) => `<button type="button" data-v="${v}" class="${P[d.id] === v ? 'on' : ''}" aria-pressed="${P[d.id] === v}">${t}</button>`).join('')}</div>`;
+      row.querySelectorAll('[data-v]').forEach((b) => { b.onclick = () => set(d.id, b.dataset.v, true); });
     } else if (d.type === 'color') {
       // paleta de Nébela + cualquier otro color
       const cur = P[d.id].toUpperCase();
@@ -405,7 +411,7 @@ function show3d() {
   const offs = layoutParts(model.parts);
   model.parts.forEach((p, k) => {
     // colores elegidos por la usuaria para el sello y el mango; el resto usa los de cada pieza
-    const color = p.name === 'Sello' ? P.stampColor : p.name === 'Mango' ? P.handleColor : p.color;
+    const color = p.name === 'Sello' || p.name === 'Mango' ? P.stampColor : p.color;
     const accent = p.name === 'Sello' ? P.reliefColor : p.accent;
     const pieces = p.split ? [[p.tris.subarray(0, p.split), color], [p.tris.subarray(p.split), accent]] : [[p.tris, color]];
     for (const [tris, color] of pieces) {
@@ -477,14 +483,24 @@ function exportParts() {
     if (p.name === 'Sello') {
       return { ...p, color: P.stampColor, subparts: p.subparts.map((s, i) => ({ ...s, color: i === 0 ? P.stampColor : P.reliefColor })) };
     }
-    if (p.name === 'Mango') return { ...p, color: P.handleColor };
+    if (p.name === 'Mango') return { ...p, color: P.stampColor };
     return { ...p, color: hex(p.color) };
   });
 }
 
+// Nombre del 3MF con los colores para configurar en Bambu Studio: loli_turquesa_relieve-blanco.3mf
+function fileName3mf() {
+  const name = $('#name').value || 'sello';
+  if (P.mode !== 'stamp' && P.mode !== 'both') return `${name}.3mf`;
+  const base = PALETTE.find(([hex]) => hex === P.stampColor.toUpperCase());
+  const baseTxt = base ? base[1].toLowerCase().replace(' ', '-') : P.stampColor.slice(1).toUpperCase();
+  const relief = P.reliefColor === '#000000' ? 'negro' : 'blanco';
+  return `${name}_${baseTxt}_relieve-${relief}.3mf`;
+}
+
 $('#dl3mf').onclick = () => {
   const offs = layoutParts(model.parts);
-  download(to3MF(exportParts(), offs), `${$('#name').value || 'sello'}.3mf`);
+  download(to3MF(exportParts(), offs), fileName3mf());
 };
 $('#dlstl').onclick = () => {
   const offs = layoutParts(model.parts);
