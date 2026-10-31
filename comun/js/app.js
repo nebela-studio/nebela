@@ -5,6 +5,25 @@ import { designFromLoops, buildModel, buildRoller, measure, pathsToSvg } from '.
 import { layoutParts, toSTL, to3MF, download } from './export.js';
 import { FONTS, loadFont, addCustomFont, textLoops, cssFamily, showFontsInPage } from './text.js';
 
+// Filamentos disponibles para la base y el mango: [color de referencia, nombre, degradé, muestra]
+// El degradé es solo para los multicolores; el color de referencia es el que va dentro del 3MF.
+const PALETTE = [
+  ['#F0196E', 'Fucsia'],
+  ['#D8D6D2', 'Mármol', null, 'linear-gradient(135deg, #F4F3F0 30%, #8E8E8E 38%, #E4E2DE 46%, #F4F3F0 62%, #A6A6A6 68%, #E4E2DE 76%)'],
+  ['#FFFFFF', 'Blanco'],
+  ['#000000', 'Negro'],
+  ['#1F5FD0', 'Azul'],
+  ['#6A3CC8', 'Violeta'],
+  ['#C9A7E8', 'Lila'],
+  ['#F7C1D3', 'Rosa pastel'],
+  ['#D8201F', 'Rojo'],
+  ['#B5533C', 'Ladrillo'],
+  ['#E8D84A', 'Amarillo'],
+  ['#F4B6D2', 'Multicolor pastel', ['#F4B6D2', '#FDE2A7', '#B9E8C9', '#B5D8F7', '#D6C1F2']],
+  ['#2A2A6E', 'Multicolor negro/azul/violeta', ['#000000', '#1F5FD0', '#6A3CC8']],
+];
+const paletteEntry = (hex) => PALETTE.find((c) => c[0] === hex);
+
 // ---------- Parámetros ----------
 // show: en qué modos aparece el control (stamp, both, cutter)
 const PARAMS = [
@@ -62,10 +81,9 @@ const PARAMS = [
   { id: 'reliefHeight', label: 'Altura del relieve', unit: 'mm', type: 'range', min: 0.4, max: 5, step: 0.1, def: 1.7 },
   { id: 'reliefInset', label: 'Separar relieve del borde', unit: 'mm', type: 'range', min: 0, max: 3, step: 0.05, def: 0 },
   { id: 'stampClearance', label: 'Holgura sello / cortante', unit: 'mm', type: 'range', min: 0, max: 3, step: 0.05, def: 0.9, show: ['both'] },
-  { id: 'stampColor', label: 'Color de la base y el mango', type: 'color', def: '#3BBFB0' },
+  { id: 'stampColor', label: 'Color de la base y el mango', type: 'color', def: '#F0196E' },
   { id: 'reliefColor', label: 'Color del relieve', type: 'seg', def: '#FFFFFF',
-    options: [['#FFFFFF', 'Blanco'], ['#000000', 'Negro']],
-    hint: 'Los colores quedan en el nombre del 3MF. En el archivo, base y relieve van como partes separadas: en Bambu Studio les asignás un filamento a cada una. El STL no guarda colores.' },
+    options: [['#FFFFFF', 'Blanco'], ['#000000', 'Negro']] },
 
   { group: 'Mango', show: ['stamp', 'both'] },
   { id: 'socket', label: 'Encastre para mango', type: 'check', def: true },
@@ -73,8 +91,7 @@ const PARAMS = [
   { id: 'handleLength', label: 'Largo del mango', unit: 'mm', type: 'range', min: 10, max: 80, step: 0.5, def: 23.5, showIf: (p) => p.includeHandle },
   { id: 'handleDiameter', label: 'Grosor del mango (diámetro)', unit: 'mm', type: 'range', min: 6, max: 30, step: 0.5, def: 10, showIf: (p) => p.includeHandle },
   { id: 'threadSize', label: 'Tamaño de la rosca', unit: 'mm', type: 'range', min: 5, max: 20, step: 0.01, def: 9.58,
-    showIf: (p) => p.socket || p.includeHandle,
-    hint: 'Con 9,58 mm encaja con los mangos que ya tenés impresos. Si lo cambiás, imprimí un mango nuevo con la misma medida.' },
+    showIf: (p) => p.socket || p.includeHandle },
   { id: 'socketFit', label: 'Holgura del encastre', unit: 'mm', type: 'range', min: 0.1, max: 0.8, step: 0.05, def: 0.4, showIf: (p) => p.socket },
   { id: 'socketX', label: 'Mover encastre (izq./der.)', unit: 'mm', type: 'range', min: -40, max: 40, step: 0.5, def: 0, showIf: (p) => p.socket },
   { id: 'socketY', label: 'Mover encastre (arriba/abajo)', unit: 'mm', type: 'range', min: -40, max: 40, step: 0.5, def: 0, showIf: (p) => p.socket },
@@ -96,16 +113,13 @@ try { Object.assign(P, JSON.parse(localStorage.getItem(STORE_KEY) || '{}')); } c
 if (P.font.startsWith('propia:')) P.font = 'pacifico';
 // el relieve ahora es solo blanco o negro: los colores guardados de antes vuelven a blanco
 if (P.reliefColor !== '#000000') P.reliefColor = '#FFFFFF';
+// si el color guardado ya no está en la lista, vuelve al primero
+if (!paletteEntry(P.stampColor)) P.stampColor = PALETTE[0][0];
 const customFonts = [];
 
 const $ = (s) => document.querySelector(s);
 const controlsEl = $('#controls');
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
-
-const PALETTE = [
-  ['#E8D84A', 'Amarillo'], ['#F5F0E8', 'Blanco roto'], ['#3BBFB0', 'Turquesa'], ['#F0196E', 'Fucsia'],
-  ['#E8522A', 'Naranja'], ['#9ACD32', 'Lima'], ['#2B2B2B', 'Grafito'],
-];
 
 // cierra la lista de tipografías al hacer clic afuera o con Escape
 function closeFontLists(except) {
@@ -182,18 +196,15 @@ function renderControls() {
         <div class="seg" style="grid-column:1/-1">${d.options.map(([v, t]) => `<button type="button" data-v="${v}" class="${P[d.id] === v ? 'on' : ''}" aria-pressed="${P[d.id] === v}">${t}</button>`).join('')}</div>`;
       row.querySelectorAll('[data-v]').forEach((b) => { b.onclick = () => set(d.id, b.dataset.v, true); });
     } else if (d.type === 'color') {
-      // paleta de Nébela + cualquier otro color
-      const cur = P[d.id].toUpperCase();
-      const inPalette = PALETTE.some(([hex]) => hex === cur);
+      // muestras de los filamentos; debajo, el nombre del elegido (en el celular no hay texto al pasar el mouse)
+      const cur = P[d.id];
+      const look = ([hex, , stops, swatch]) => swatch || (stops ? `linear-gradient(135deg, ${stops.join(', ')})` : hex);
       row.innerHTML = `<label>${d.label}</label>
         <div class="swatches" style="grid-column:1/-1">
-          ${PALETTE.map(([hex, name]) => `<button type="button" class="sw" data-c="${hex}" title="${name}" aria-label="${name}" aria-pressed="${hex === cur}" style="background:${hex}"></button>`).join('')}
-          <label class="sw sw-other" title="Otro color" aria-pressed="${!inPalette}" style="${inPalette ? '' : `background:${cur}`}"><input type="color" value="${cur.toLowerCase()}" aria-label="Otro color"></label>
-        </div>`;
+          ${PALETTE.map((c) => `<button type="button" class="sw" data-c="${c[0]}" title="${c[1]}" aria-label="${c[1]}" aria-pressed="${c[0] === cur}" style="background:${look(c)}"></button>`).join('')}
+        </div>
+        <small class="sw-name" style="grid-column:1/-1">${paletteEntry(cur)[1]}</small>`;
       row.querySelectorAll('[data-c]').forEach((b) => { b.onclick = () => set(d.id, b.dataset.c, true); });
-      const other = row.querySelector('input');
-      other.oninput = () => set(d.id, other.value.toUpperCase());
-      other.onchange = () => renderControls();
     } else if (d.type === 'select') {
       row.innerHTML = `<label>${d.label}</label><select style="grid-column:1/-1">${d.options.map(([v, t]) => `<option value="${v}" ${P[d.id] === v ? 'selected' : ''}>${t}</option>`).join('')}</select>`;
       row.querySelector('select').onchange = (e) => set(d.id, e.target.value, true);
@@ -404,6 +415,21 @@ const group = new THREE.Group();
 scene.add(group);
 let framed = false;
 
+// Colores por vértice que pasan por los tonos del degradé según la altura de la pieza
+function heightGradient(tris, stops) {
+  let z0 = Infinity, z1 = -Infinity;
+  for (let i = 2; i < tris.length; i += 3) { z0 = Math.min(z0, tris[i]); z1 = Math.max(z1, tris[i]); }
+  const cols = stops.map((s) => new THREE.Color(s));
+  const out = new Float32Array(tris.length), c = new THREE.Color();
+  for (let i = 0; i < tris.length; i += 3) {
+    const t = ((tris[i + 2] - z0) / (z1 - z0 || 1)) * (cols.length - 1);
+    const k = Math.min(Math.floor(t), cols.length - 2);
+    c.copy(cols[k]).lerp(cols[k + 1], t - k);
+    out[i] = c.r; out[i + 1] = c.g; out[i + 2] = c.b;
+  }
+  return out;
+}
+
 function show3d() {
   group.children.forEach((m) => m.geometry.dispose());
   group.clear();
@@ -414,11 +440,14 @@ function show3d() {
     const color = p.name === 'Sello' || p.name === 'Mango' ? P.stampColor : p.color;
     const accent = p.name === 'Sello' ? P.reliefColor : p.accent;
     const pieces = p.split ? [[p.tris.subarray(0, p.split), color], [p.tris.subarray(p.split), accent]] : [[p.tris, color]];
-    for (const [tris, color] of pieces) {
+    for (const [tris, c] of pieces) {
       const g = new THREE.BufferGeometry();
       g.setAttribute('position', new THREE.BufferAttribute(tris, 3));
       g.computeVertexNormals();
-      const mesh = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color, roughness: 0.75, flatShading: true }));
+      // los filamentos multicolor se muestran con un degradé a lo largo de la pieza
+      const stops = c === P.stampColor && (p.name === 'Sello' || p.name === 'Mango') ? paletteEntry(c)[2] : null;
+      if (stops) g.setAttribute('color', new THREE.BufferAttribute(heightGradient(tris, stops), 3));
+      const mesh = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: stops ? 0xffffff : c, vertexColors: !!stops, roughness: 0.75, flatShading: true }));
       mesh.position.set(...offs[k]);
       group.add(mesh);
     }
@@ -492,8 +521,8 @@ function exportParts() {
 function fileName3mf() {
   const name = $('#name').value || 'sello';
   if (P.mode !== 'stamp' && P.mode !== 'both') return `${name}.3mf`;
-  const base = PALETTE.find(([hex]) => hex === P.stampColor.toUpperCase());
-  const baseTxt = base ? base[1].toLowerCase().replace(' ', '-') : P.stampColor.slice(1).toUpperCase();
+  // sin tildes ni barras: "Multicolor negro/azul/violeta" -> multicolor-negro-azul-violeta
+  const baseTxt = paletteEntry(P.stampColor)[1].toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[ /]+/g, '-');
   const relief = P.reliefColor === '#000000' ? 'negro' : 'blanco';
   return `${name}_${baseTxt}_relieve-${relief}.3mf`;
 }
