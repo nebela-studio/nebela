@@ -225,7 +225,8 @@ function renderControls() {
     } else if (d.type === 'stl') {
       const mm = (x) => String(+x.toFixed(1)).replace('.', ',');
       const dims = piece ? pieceSize(piece.tris) : null;
-      row.innerHTML = `<label class="drop" style="grid-column:1/-1">
+      row.innerHTML = `<label>Subí el STL de tu pieza</label>
+        <label class="drop" style="grid-column:1/-1">
           <input type="file" accept=".stl,model/stl,application/sla,application/vnd.ms-pki.stl,application/octet-stream">
           <span>${piece ? `<b>${esc(piece.name)}</b><br><small>${dims.map(mm).join(' × ')} mm · cambiar</small>`
             : 'Elegí el STL de tu pieza<br><small>Maciza, parada, con la boca hacia arriba</small>'}</span>
