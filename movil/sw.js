@@ -2,7 +2,7 @@
 // Con conexión siempre se pide la versión nueva de cada archivo (así los cambios llegan enseguida);
 // sin conexión se usa la última copia guardada.
 const CACHE = 'disenador-nebela';
-const VERSION = '2026-11-19-pestana-paredes'; // cambiarlo en cada publicación hace que el celular instale la nueva enseguida
+const VERSION = '2026-11-19-ganchos-cola-milano'; // cambiarlo en cada publicación hace que el celular instale la nueva enseguida
 
 const FONTS = ['pacifico', 'dancing-script', 'great-vibes', 'sacramento', 'satisfy', 'cookie', 'courgette',
   'kaushan-script', 'lobster', 'caveat', 'patrick-hand', 'amatic-sc', 'playfair-display', 'poppins',

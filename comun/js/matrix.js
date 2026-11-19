@@ -9,7 +9,8 @@
 //   cada mitad, con las mismas llaves.
 // Encofrado: la placa tiene un bisel a 45° en el borde de arriba; las paredes, partidas en dos, la
 //   rodean con 0,3 mm de juego y la traban por encima del bisel (así la placa no flota en el yeso).
-//   Las dos mitades se cierran con broches que se deslizan desde arriba sobre las aletas.
+//   Las dos mitades se cierran con ganchos que se deslizan desde arriba sobre orejas en cola de
+//   milano, con una cuña abajo que aprieta (igual que el molde de torta).
 import { geo } from './geometry.js';
 
 const { C, MeshBuilder, toClip, union, diff, intersect, offset, toExPolys, extrude, cap, circlePath, roundedRect, bbox, areaOf, signedArea, pip } = geo;
@@ -20,9 +21,6 @@ const E = {
   lipH: 2, lipIn: 3,  // pestaña de abajo de las paredes: alto y cuánto entra debajo de la placa
   clrV: 0.1,          // juego vertical entre la placa y el bisel de las paredes
   wallT: 3,           // espesor de las paredes
-  tabT: 3, tabL: 8,   // aletas de las juntas
-  clipGap: 0.15,      // juego por lado entre broche y aletas
-  clipT: 2.5,         // espesor del broche
   step: 0.2,          // escalones del bisel y de los huecos de las llaves (una capa de impresión)
   lip: 2,             // 1 tacel: el collar es 2 mm más ancho que la boca
   coladaLess: 5,      // 2 taceles: el canal es 5 mm más angosto que la boca
@@ -255,39 +253,79 @@ function buildPlate(m, plate, e, b, pockets) {
   }
 }
 
-// Media pared (side = 1 a la derecha, -1 a la izquierda) con sus aletas, y los broches.
+// Orejas en cola de milano y ganchos, como en el molde de torta. En cada junta, cada mitad lleva
+// media cola de milano: un cuello angosto pegado a la pared y una cola que se ensancha hacia afuera.
+// El gancho se desliza desde arriba y abraza las dos: no se puede sacar hacia afuera (la cola es
+// más ancha que el cuello) ni dejar que las mitades se abran. Medidas en (x = a lo ancho desde la
+// junta, u = hacia afuera desde la pared).
+const EAR = {
+  u0: -2, uNeck: 3, uEnd: 11,  // el cuello arranca 2 mm dentro de la pared y llega a 3 mm; la cola sigue hasta 11
+  wn: 3.5, wb: 6,              // medio ancho del cuello y del final de la cola
+  wedgeZ: 10, wedgeK: 0.03,    // cuña: en los 10 mm de abajo las orejas se ensanchan 0,03 mm por mm
+  hookL: 40,                   // largo del gancho
+  hookGap: 0.15,               // juego por lado entre gancho y orejas (en la parte recta)
+  hookT: 3,                    // espesor del gancho
+  hookMouth: 0.6,              // chaflán de la boca del gancho
+  hookFrom: 0.6,               // el gancho no toca la pared
+};
+
+// Cola de milano completa de una junta (las dos medias orejas). extra: ensanche de la cuña.
+function dovetail(extra = 0, grow = 0) {
+  const wn = EAR.wn + extra, wb = EAR.wb + extra;
+  const p = [toClip([[-wn, EAR.u0], [wn, EAR.u0], [wn, EAR.uNeck], [wb, EAR.uEnd], [-wb, EAR.uEnd], [-wn, EAR.uNeck]])];
+  return grow ? offset(p, grow) : p;
+}
+
+// Media pared (side = 1 a la derecha, -1 a la izquierda) con sus orejas, y los ganchos.
 // La placa apoya sobre una pestaña de abajo (entra 3 mm debajo de ella) y el bisel la traba por
 // arriba: así no flota en el yeso y tampoco se cae al levantar el molde.
 // H es el alto desde la base de la placa; las paredes miden lipH + clrV más.
 function wallParts(plate, e, b, H) {
   const zb = E.lipH, dz = E.lipH + E.clrV; // la placa apoya en z = zb; el bisel de la pared va dz más arriba
+  const Hw = dz + H;
   const outer = offset(plate, E.clr + E.wallT);
   const ob = bbox(intersect(outer, [rect(-0.01, -BIG, 0.01, BIG)]));
+  // juntas: arriba (las orejas salen hacia +y) y abajo (hacia -y)
+  const Y = Math.round(ob.y1 * geo.SC), Yb = Math.round(ob.y0 * geo.SC);
+  const atJoints = (paths) => union([
+    ...paths.map((p) => p.map((q) => ({ X: q.X, Y: Y + q.Y }))),
+    ...paths.map((p) => p.map((q) => ({ X: q.X, Y: Yb - q.Y }))),
+  ]);
   const parts = [];
   for (const s of [1, -1]) {
-    const xa = Math.min(0, s * E.tabT), xb = Math.max(0, s * E.tabT);
-    const tabs = [rect(xa, ob.y1 - E.wallT, xb, ob.y1 + E.tabL), rect(xa, ob.y0 - E.tabL, xb, ob.y0 + E.wallT)];
     const side = [s > 0 ? rect(0, -BIG, BIG, BIG) : rect(-BIG, -BIG, 0, BIG)];
-    const shape = (inner) => union(intersect(diff(outer, inner), side).concat(tabs));
+    const shape = (inner) => intersect(diff(outer, inner), side);
     const ring = (z) => shape(offset(plateAt(plate, z, e, b), E.clr));
+    const ears = (extra) => atJoints(intersect(dovetail(extra), side));
     const m = new MeshBuilder();
     toExPolys(shape(offset(plate, -E.lipIn))).forEach((ex) => extrude(m, ex, 0, zb)); // pestaña
     toExPolys(ring(0)).forEach((ex) => extrude(m, ex, zb - 0.05, dz + e - b));
     for (const [z0, z1] of steps(e, e - b)) toExPolys(ring(z1)).forEach((ex) => extrude(m, ex, dz + z0 - 0.05, dz + z1));
-    toExPolys(ring(e)).forEach((ex) => extrude(m, ex, dz + e - 0.05, dz + H));
+    toExPolys(ring(e)).forEach((ex) => extrude(m, ex, dz + e - 0.05, Hw));
+    // orejas: con cuña abajo (en escalones de una capa) y rectas el resto
+    const nW = Math.round(EAR.wedgeZ / E.step);
+    for (let k = 0; k < nW; k++) {
+      const z0 = k * E.step;
+      toExPolys(ears(EAR.wedgeK * (EAR.wedgeZ - z0))).forEach((ex) => extrude(m, ex, k ? z0 - 0.05 : 0, z0 + E.step));
+    }
+    toExPolys(ears(0)).forEach((ex) => extrude(m, ex, EAR.wedgeZ - 0.05, Hw));
     parts.push({ name: `Pared ${s > 0 ? 1 : 2}`, color: 0xE8D84A, tris: new Float32Array(m.p) });
   }
-  // broche en C: abraza las dos aletas de una junta
-  const w = E.tabT + E.clipGap, o = w + E.clipT, L = E.tabL + E.clipGap;
-  const prof = diff([rect(-o, 0.4, o, L + E.clipT)], [rect(-w, -1, w, L)]);
+  // gancho: caja con el hueco de la cola de milano (más el juego), con la boca de abajo achaflanada
+  const L = Math.min(EAR.hookL, Hw);
+  const ww = EAR.wb + EAR.hookGap + EAR.hookT;
+  const box = [rect(-ww, EAR.hookFrom, ww, EAR.uEnd + EAR.hookGap + EAR.hookT)];
   for (const k of [1, 2]) {
     const m = new MeshBuilder();
-    toExPolys(prof).forEach((ex) => extrude(m, ex, 0, dz + H));
-    parts.push({ name: `Broche ${k}`, color: 0x9ACD32, tris: new Float32Array(m.p) });
+    const nM = Math.round(EAR.hookMouth / E.step);
+    for (let i = 0; i < nM; i++) {
+      const z0 = i * E.step;
+      toExPolys(diff(box, dovetail(0, EAR.hookGap + EAR.hookMouth - z0))).forEach((ex) => extrude(m, ex, i ? z0 - 0.05 : 0, z0 + E.step));
+    }
+    toExPolys(diff(box, dovetail(0, EAR.hookGap))).forEach((ex) => extrude(m, ex, EAR.hookMouth - 0.05, L));
+    parts.push({ name: `Gancho ${k}`, color: 0x9ACD32, tris: new Float32Array(m.p) });
   }
-  return { parts, height: dz + H, rings: union(diff(outer, offset(plateAt(plate, e, e, b), E.clr)).concat(
-    [1, -1].flatMap((s) => [rect(Math.min(0, s * E.tabT), ob.y1 - E.wallT, Math.max(0, s * E.tabT), ob.y1 + E.tabL),
-      rect(Math.min(0, s * E.tabT), ob.y0 - E.tabL, Math.max(0, s * E.tabT), ob.y0 + E.wallT)]))) };
+  return { parts, height: Hw, rings: union(diff(outer, offset(plateAt(plate, e, e, b), E.clr)).concat(atJoints(dovetail()))) };
 }
 
 // Botón semiesférico de una llave (hundido 0,3 mm en la placa para que el slicer lo una)
