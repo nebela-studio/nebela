@@ -698,6 +698,12 @@ export function buildRoller(design, P) {
   };
 }
 
+// Herramientas compartidas con matrix.js (matrices para moldes de yeso)
+export const geo = {
+  C, SC, MeshBuilder, toClip, fromClip, union, diff, intersect, offset, toExPolys, extrude, cap, loft, wall,
+  orient, circlePath, roundedRect, bbox, areaOf, signedArea, pip,
+};
+
 export function pathsToSvg(paths) {
   return paths.map((p) => 'M' + p.map((q) => `${(q.X / SC).toFixed(3)},${(-q.Y / SC).toFixed(3)}`).join('L') + 'Z').join('');
 }

@@ -56,6 +56,7 @@ fieldset { border: 0; border-top: 1px solid var(--line); padding: 12px 0 0; }
 .drop img { max-width: 100%; max-height: 120px; display: block; margin: 0 auto 6px; }
 .seg { display: flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: #fff; }
 #modeSeg { display: grid; grid-template-columns: 1fr 1fr; }
+#modeSeg button:last-child:nth-child(odd) { grid-column: 1 / -1; }
 .seg button { flex: 1; border: 0; border-radius: 0; background: transparent; padding: 7px 4px; }
 .seg button:hover { background: var(--blanco-roto); }
 .seg button.on { background: var(--turquesa); color: var(--grafito); font-weight: 500; }

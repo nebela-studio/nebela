@@ -1,12 +1,12 @@
 # Diseñador de sellos · Nébela Studio
 
-Sellos, cortantes y rodillos texturizadores para cerámica. Hay **dos versiones que se mantienen juntas**:
+Sellos, cortantes, rodillos texturizadores y matrices para moldes de yeso (1 o 2 taceles) para cerámica. Hay **dos versiones que se mantienen juntas**:
 la de escritorio y la app para celular (instalable, funciona sin internet).
 
 ## Cómo abrirlo
 
 - **Computadora:** doble clic en `Abrir diseñador.bat` (necesita Python). Abre `http://localhost:8642/escritorio/`.
-- **Celular:** cuando esté publicada en internet, abrir la dirección y elegir "Agregar a pantalla de inicio".
+- **Celular:** está publicada en GitHub Pages: abrir **https://nebela-studio.github.io/nebela/** y elegir "Agregar a pantalla de inicio".
 
 ## Carpetas
 
@@ -19,6 +19,7 @@ comun/            TODO lo compartido: un cambio acá llega a las dos versiones
   js/trace.js       Imagen → contornos
   js/text.js        Texto → contornos, lista de tipografías
   js/export.js      3MF (con partes y colores) y STL
+  js/matrix.js      Matrices para molde de yeso: lee el STL de la pieza, placa, colada, llaves, paredes y broches
   libs/             Three.js 0.160.0, Clipper 6.4.2, fflate 0.8.2, opentype.js 1.3.4 (copias locales)
   fuentes/          20 tipografías + DM Sans y Pacifico (de @fontsource, copias locales)
   estilos.css       Colores, letras y controles de Nébela

@@ -11,6 +11,10 @@ toggle.onclick = () => setOpen(!panel.classList.contains('open'));
 document.getElementById('sheetGrip').onclick = () => setOpen(false);
 // al elegir una imagen se cierra el panel para ver el resultado
 document.getElementById('file').addEventListener('change', () => setTimeout(() => setOpen(false), 400));
+// lo mismo al subir el STL de una matriz (ese botón se arma dentro de los ajustes)
+document.getElementById('controls').addEventListener('change', (e) => {
+  if (e.target.type === 'file') setTimeout(() => setOpen(false), 400);
+});
 
 // arranca con los ajustes abiertos, desde arriba
 setOpen(true);

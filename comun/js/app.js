@@ -4,6 +4,7 @@ import { rasterize, makeMask, traceMask } from './trace.js';
 import { designFromLoops, buildModel, buildRoller, measure, pathsToSvg } from './geometry.js';
 import { layoutParts, toSTL, to3MF, download } from './export.js';
 import { FONTS, loadFont, addCustomFont, textLoops, cssFamily, showFontsInPage } from './text.js';
+import { buildMatrix, parseSTL, examplePiece, pieceSize } from './matrix.js';
 
 // Filamentos disponibles para la base y el mango: [color de referencia, nombre, degradé, muestra]
 // El degradé es solo para los multicolores; el color de referencia es el que va dentro del 3MF.
@@ -25,9 +26,32 @@ const PALETTE = [
 const paletteEntry = (hex) => PALETTE.find((c) => c[0] === hex);
 
 // ---------- Parámetros ----------
-// show: en qué modos aparece el control (stamp, both, cutter)
+// show: en qué modos aparece el control (stamp, both, cutter, roller, matrix)
+const DESIGN_MODES = ['stamp', 'both', 'cutter', 'roller'];
 const PARAMS = [
-  { group: 'Diseño' },
+  { group: 'Pieza', show: ['matrix'] },
+  { id: 'piece', type: 'stl' },
+  { id: 'flip', label: 'Dar vuelta (la boca tiene que quedar arriba)', type: 'check', def: false },
+
+  { group: 'Medidas', show: ['matrix'] },
+  { id: 'moldHeight', label: 'Alto de la pieza cocida', unit: 'mm', type: 'range', min: 10, max: 250, step: 0.5, def: 90,
+    hint: 'El ancho se ajusta solo, en proporción.' },
+  { id: 'shrink', label: 'Contracción de la pasta', unit: '%', type: 'range', min: 0, max: 20, step: 0.5, def: 7,
+    hint: 'Total, secado y cocción. La matriz se hace así de más grande para que la pieza cocida quede a la medida.' },
+
+  { group: 'Matriz', show: ['matrix'] },
+  { id: 'tassels', label: 'Taceles', type: 'seg', def: '2', options: [['1', '1 tacel'], ['2', '2 taceles']] },
+  { id: 'tasselsNote', type: 'note', text: (p) => (p.tassels === '1'
+    ? 'Para tazas, vasos y cuencos que se abren hacia la boca. La pieza va boca abajo, sobre un collar de colada.'
+    : 'Para floreros, botellas y piezas que se cierran en la boca. Se parte al medio a lo largo; si es igual de los dos lados, la misma matriz sirve para colar las dos mitades.') },
+  { id: 'moldMargin', label: 'Yeso alrededor de la pieza', unit: 'mm', type: 'range', min: 15, max: 60, step: 1, def: 30 },
+  { id: 'plateThickness', label: 'Espesor de la placa', unit: 'mm', type: 'range', min: 5, max: 12, step: 0.5, def: 7 },
+  { id: 'coladaLength', label: 'Largo del canal de colada', unit: 'mm', type: 'range', min: 10, max: 60, step: 1, def: 30,
+    showIf: (p) => p.tassels !== '1', hint: 'Va de la boca hasta el borde de la placa. Es 5 mm más angosto que la boca.' },
+  { id: 'collarHeight', label: 'Alto del collar de colada', unit: 'mm', type: 'range', min: 3, max: 40, step: 0.5, def: 10,
+    showIf: (p) => p.tassels === '1', hint: 'Va debajo de la boca y es 2 mm más ancho: junta la barbotina de más y marca por dónde cortar.' },
+
+  { group: 'Diseño', show: DESIGN_MODES },
   { id: 'size', label: 'Tamaño (lado más largo)', unit: 'mm', type: 'range', min: 10, max: 200, step: 0.5, def: 30, show: ['stamp', 'both', 'cutter'] },
   { id: 'threshold', label: 'Umbral claro / oscuro', type: 'range', min: 10, max: 245, step: 1, def: 128, showIf: () => raster },
   { id: 'invert', label: 'Invertir (lo claro es relieve)', type: 'check', def: false, showIf: () => raster },
@@ -35,7 +59,7 @@ const PARAMS = [
   { id: 'smooth', label: 'Suavizado del trazo', type: 'range', min: 0, max: 3, step: 0.1, def: 0.7, showIf: () => raster },
   { id: 'thicken', label: 'Engrosar líneas', unit: 'mm', type: 'range', min: 0, max: 1.5, step: 0.05, def: 0 },
 
-  { group: 'Texto' },
+  { group: 'Texto', show: DESIGN_MODES },
   { id: 'textOn', label: 'Agregar texto', type: 'check', def: false },
   { id: 'text', label: 'Texto (Enter para otra línea)', type: 'textarea', def: 'Nébela', showIf: (p) => p.textOn },
   { id: 'font', label: 'Tipografía', type: 'font', def: 'pacifico', showIf: (p) => p.textOn },
@@ -146,6 +170,13 @@ function renderControls() {
     }
     const show = d.show || groupShow;
     if ((show && !show.includes(P.mode)) || (d.showIf && !d.showIf(P))) continue;
+    if (d.type === 'note') {
+      const note = document.createElement('p');
+      note.className = 'hint';
+      note.textContent = d.text(P);
+      fs.append(note);
+      continue;
+    }
     const row = document.createElement('div');
     row.className = 'row' + (d.type === 'check' ? ' check' : '');
     if (d.type === 'check') {
@@ -191,6 +222,20 @@ function renderControls() {
           alert('No pude leer esa tipografía. Probá con un archivo .ttf u .otf.');
         }
       };
+    } else if (d.type === 'stl') {
+      const mm = (x) => String(+x.toFixed(1)).replace('.', ',');
+      const dims = piece ? pieceSize(piece.tris) : null;
+      row.innerHTML = `<label class="drop" style="grid-column:1/-1">
+          <input type="file" accept=".stl,model/stl,application/sla,application/vnd.ms-pki.stl,application/octet-stream">
+          <span>${piece ? `<b>${esc(piece.name)}</b><br><small>${dims.map(mm).join(' × ')} mm · cambiar</small>`
+            : 'Elegí el STL de tu pieza<br><small>Maciza, parada, con la boca hacia arriba</small>'}</span>
+        </label>
+        <div class="seg" style="grid-column:1/-1">
+          <button type="button" data-ex="vaso">Vaso de ejemplo</button>
+          <button type="button" data-ex="florero">Florero de ejemplo</button>
+        </div>`;
+      row.querySelector('input').onchange = (e) => loadSTL(e.target.files[0]);
+      row.querySelectorAll('[data-ex]').forEach((btn) => { btn.onclick = () => useExample(btn.dataset.ex); });
     } else if (d.type === 'seg') {
       row.innerHTML = `<label>${d.label}</label>
         <div class="seg" style="grid-column:1/-1">${d.options.map(([v, t]) => `<button type="button" data-v="${v}" class="${P[d.id] === v ? 'on' : ''}" aria-pressed="${P[d.id] === v}">${t}</button>`).join('')}</div>`;
@@ -236,13 +281,50 @@ function set(id, v, rerenderControls = false) {
   schedule(['threshold', 'invert', 'smooth'].includes(id) ? 'trace' : 'design');
 }
 
+// La imagen no se usa en las matrices: ahí se sube el STL de la pieza
+function syncModeUI() {
+  $('#drop').closest('section').hidden = P.mode === 'matrix';
+}
+
 document.querySelectorAll('#modeSeg button').forEach((b) => {
   b.classList.toggle('on', b.dataset.mode === P.mode);
   b.onclick = () => {
     document.querySelectorAll('#modeSeg button').forEach((x) => x.classList.toggle('on', x === b));
     set('mode', b.dataset.mode, true);
+    syncModeUI();
   };
 });
+
+// ---------- Pieza para la matriz (STL) ----------
+let piece = null;
+
+function setPiece(p, height) {
+  piece = p;
+  $('#name').value = p.file;
+  if (height) P.moldHeight = Math.min(250, Math.max(10, Math.round(height * 2) / 2));
+  framed = false;
+  renderControls();
+  schedule('design');
+}
+
+function useExample(kind) {
+  const ex = examplePiece(kind);
+  P.tassels = ex.tassels;
+  P.flip = false;
+  setPiece(ex, pieceSize(ex.tris)[2]);
+}
+
+async function loadSTL(file) {
+  if (!file) return;
+  try {
+    const tris = parseSTL(await file.arrayBuffer());
+    if (!tris.length) throw new Error();
+    const name = file.name.replace(/\.[^.]+$/, '');
+    setPiece({ name: file.name, file: `matriz-${name}`, tris }, pieceSize(tris)[2]);
+  } catch {
+    alert('No pude leer ese STL. Probá exportarlo de nuevo desde tu programa de modelado.');
+  }
+}
 
 // ---------- Imagen ----------
 let raster = null, loops = null, model = null;
@@ -290,6 +372,25 @@ function schedule(level) {
 let runId = 0;
 async function run() {
   const id = ++runId;
+  if (P.mode === 'matrix') {
+    pending = null;
+    if (!piece) { useExample(P.tassels === '1' ? 'vaso' : 'florero'); return; }
+    // con un STL grande puede tardar un poco: se avisa antes de calcular
+    $('#size').textContent = 'Calculando…';
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+    if (id !== runId) return;
+    let warn = [];
+    try {
+      model = buildMatrix(piece.tris, P);
+      warn = model.warnings;
+    } catch (e) {
+      console.error(e);
+      model = null;
+      warn = ['No pude armar la matriz con esta pieza. Revisá que el STL sea una pieza maciza y cerrada.'];
+    }
+    showResult(warn);
+    return;
+  }
   if (raster && (pending === 'trace' || !loops)) {
     const mask = makeMask(raster, P.threshold, P.invert);
     loops = traceMask(mask, raster.w, raster.h, P.smooth);
@@ -334,13 +435,18 @@ async function run() {
     model = roller ? buildRoller(design, P) : buildModel(design, P);
     warn.push(...model.warnings);
   }
+  showResult(warn);
+}
+
+function showResult(warn) {
+  $('[data-view="2d"]').textContent = P.mode === 'roller' ? 'Desenrollado' : 'Vista de arriba';
   $('#warnings').innerHTML = warn.map((w) => `<div>⚠ ${w}</div>`).join('');
   $('#empty').hidden = !!model;
   $('#dl3mf').disabled = $('#dlstl').disabled = !model || !model.parts.length;
   const sz = model?.size;
   const mm = (x) => String(+x.toFixed(1)).replace('.', ',');
   const holeTxt = sz?.hole ? ` · agujero Ø${mm(sz.hole)} · pared ${mm(sz.wall)}` : '';
-  $('#size').textContent = !sz ? '' : sz.roller ? `Ø${mm(sz.w)} × ${mm(sz.h)}${holeTxt} mm` : `${mm(sz.w)} × ${mm(sz.h)} mm`;
+  $('#size').textContent = !sz ? '' : sz.text ? sz.text : sz.roller ? `Ø${mm(sz.w)} × ${mm(sz.h)}${holeTxt} mm` : `${mm(sz.w)} × ${mm(sz.h)} mm`;
   $('#size').title = $('#size').textContent; // completo al pasar el mouse si no entra
   show3d();
   show2d();
@@ -537,4 +643,5 @@ $('#dlstl').onclick = () => {
 };
 
 renderControls();
+syncModeUI();
 schedule('design');

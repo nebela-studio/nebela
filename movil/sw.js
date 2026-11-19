@@ -14,7 +14,7 @@ const FILES = [
   './', 'index.html', 'movil.css', 'movil.js', 'manifest.webmanifest',
   'iconos/icono-180.png', 'iconos/icono-192.png', 'iconos/icono-512.png',
   '../comun/estilos.css',
-  '../comun/js/app.js', '../comun/js/geometry.js', '../comun/js/trace.js', '../comun/js/text.js', '../comun/js/export.js',
+  '../comun/js/app.js', '../comun/js/geometry.js', '../comun/js/trace.js', '../comun/js/text.js', '../comun/js/export.js', '../comun/js/matrix.js',
   '../comun/libs/three.module.js', '../comun/libs/OrbitControls.js', '../comun/libs/clipper.js',
   '../comun/libs/fflate.js', '../comun/libs/opentype.module.js',
   '../comun/fuentes/dm-sans-300.woff2', '../comun/fuentes/dm-sans-400.woff2', '../comun/fuentes/dm-sans-500.woff2',
