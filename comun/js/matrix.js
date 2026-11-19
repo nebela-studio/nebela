@@ -17,6 +17,8 @@ const { C, MeshBuilder, toClip, union, diff, intersect, offset, toExPolys, extru
 const E = {
   bevel: 3,           // bisel del borde de la placa
   clr: 0.3,           // juego entre la placa y las paredes
+  lipH: 2, lipIn: 3,  // pestaña de abajo de las paredes: alto y cuánto entra debajo de la placa
+  clrV: 0.1,          // juego vertical entre la placa y el bisel de las paredes
   wallT: 3,           // espesor de las paredes
   tabT: 3, tabL: 8,   // aletas de las juntas
   clipGap: 0.15,      // juego por lado entre broche y aletas
@@ -254,7 +256,11 @@ function buildPlate(m, plate, e, b, pockets) {
 }
 
 // Media pared (side = 1 a la derecha, -1 a la izquierda) con sus aletas, y los broches.
+// La placa apoya sobre una pestaña de abajo (entra 3 mm debajo de ella) y el bisel la traba por
+// arriba: así no flota en el yeso y tampoco se cae al levantar el molde.
+// H es el alto desde la base de la placa; las paredes miden lipH + clrV más.
 function wallParts(plate, e, b, H) {
+  const zb = E.lipH, dz = E.lipH + E.clrV; // la placa apoya en z = zb; el bisel de la pared va dz más arriba
   const outer = offset(plate, E.clr + E.wallT);
   const ob = bbox(intersect(outer, [rect(-0.01, -BIG, 0.01, BIG)]));
   const parts = [];
@@ -262,11 +268,13 @@ function wallParts(plate, e, b, H) {
     const xa = Math.min(0, s * E.tabT), xb = Math.max(0, s * E.tabT);
     const tabs = [rect(xa, ob.y1 - E.wallT, xb, ob.y1 + E.tabL), rect(xa, ob.y0 - E.tabL, xb, ob.y0 + E.wallT)];
     const side = [s > 0 ? rect(0, -BIG, BIG, BIG) : rect(-BIG, -BIG, 0, BIG)];
-    const ring = (z) => union(intersect(diff(outer, offset(plateAt(plate, z, e, b), E.clr)), side).concat(tabs));
+    const shape = (inner) => union(intersect(diff(outer, inner), side).concat(tabs));
+    const ring = (z) => shape(offset(plateAt(plate, z, e, b), E.clr));
     const m = new MeshBuilder();
-    toExPolys(ring(0)).forEach((ex) => extrude(m, ex, 0, e - b));
-    for (const [z0, z1] of steps(e, e - b)) toExPolys(ring(z1)).forEach((ex) => extrude(m, ex, z0 - 0.05, z1));
-    toExPolys(ring(e)).forEach((ex) => extrude(m, ex, e - 0.05, H));
+    toExPolys(shape(offset(plate, -E.lipIn))).forEach((ex) => extrude(m, ex, 0, zb)); // pestaña
+    toExPolys(ring(0)).forEach((ex) => extrude(m, ex, zb - 0.05, dz + e - b));
+    for (const [z0, z1] of steps(e, e - b)) toExPolys(ring(z1)).forEach((ex) => extrude(m, ex, dz + z0 - 0.05, dz + z1));
+    toExPolys(ring(e)).forEach((ex) => extrude(m, ex, dz + e - 0.05, dz + H));
     parts.push({ name: `Pared ${s > 0 ? 1 : 2}`, color: 0xE8D84A, tris: new Float32Array(m.p) });
   }
   // broche en C: abraza las dos aletas de una junta
@@ -274,10 +282,10 @@ function wallParts(plate, e, b, H) {
   const prof = diff([rect(-o, 0.4, o, L + E.clipT)], [rect(-w, -1, w, L)]);
   for (const k of [1, 2]) {
     const m = new MeshBuilder();
-    toExPolys(prof).forEach((ex) => extrude(m, ex, 0, H));
+    toExPolys(prof).forEach((ex) => extrude(m, ex, 0, dz + H));
     parts.push({ name: `Broche ${k}`, color: 0x9ACD32, tris: new Float32Array(m.p) });
   }
-  return { parts, rings: union(diff(outer, offset(plateAt(plate, e, e, b), E.clr)).concat(
+  return { parts, height: dz + H, rings: union(diff(outer, offset(plateAt(plate, e, e, b), E.clr)).concat(
     [1, -1].flatMap((s) => [rect(Math.min(0, s * E.tabT), ob.y1 - E.wallT, Math.max(0, s * E.tabT), ob.y1 + E.tabL),
       rect(Math.min(0, s * E.tabT), ob.y0 - E.tabL, Math.max(0, s * E.tabT), ob.y0 + E.wallT)]))) };
 }
@@ -406,6 +414,7 @@ export function buildMatrix(src, P) {
   const pbx = bbox(plate);
   const pw = pbx.x1 - pbx.x0, ph = pbx.y1 - pbx.y0;
   if (Math.max(pw, ph) + 2 * (E.clr + E.wallT) > 250) warnings.push('La placa es más grande que la cama de la P1S (256 mm): achicá el yeso alrededor o la pieza.');
+  H = walls.height;
   if (H > 250) warnings.push('Las paredes son más altas que lo que imprime la P1S (256 mm).');
 
   return {
