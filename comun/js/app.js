@@ -103,6 +103,8 @@ const PARAMS = [
   { group: 'Sello', show: ['stamp', 'both'] },
   { id: 'baseThickness', label: 'Grosor de la base', unit: 'mm', type: 'range', min: 1, max: 12, step: 0.1, def: 5.5 },
   { id: 'reliefHeight', label: 'Altura del relieve', unit: 'mm', type: 'range', min: 0.4, max: 5, step: 0.1, def: 1.7 },
+  { id: 'minLine', label: 'Línea más fina que se puede imprimir', unit: 'mm', type: 'range', min: 0.1, max: 0.6, step: 0.05, def: 0.3,
+    hint: 'Si el relieve tiene partes más finas, no se descarga. Con boquilla 0,4, Bambu Studio imprime líneas más finas ensanchándolas (a unos 0,34 mm) y descarta las de menos de 0,1 mm. Si las líneas finas no te salen bien, subilo.' },
   { id: 'reliefInset', label: 'Separar relieve del borde', unit: 'mm', type: 'range', min: 0, max: 3, step: 0.05, def: 0 },
   { id: 'stampClearance', label: 'Holgura sello / cortante', unit: 'mm', type: 'range', min: 0, max: 3, step: 0.05, def: 0.9, show: ['both'] },
   { id: 'stampColor', label: 'Color de la base y el mango', type: 'color', def: '#F0196E' },
@@ -443,7 +445,10 @@ function showResult(warn) {
   $('[data-view="2d"]').textContent = P.mode === 'roller' ? 'Desenrollado' : 'Vista de arriba';
   $('#warnings').innerHTML = warn.map((w) => `<div>⚠ ${w}</div>`).join('');
   $('#empty').hidden = !!model;
-  $('#dl3mf').disabled = $('#dlstl').disabled = !model || !model.parts.length;
+  // bloqueo: si el relieve tiene partes más finas que la línea mínima, no se descarga
+  $('#dl3mf').disabled = $('#dlstl').disabled = !model || !model.parts.length || !!model.blocked;
+  const why = model?.blocked ? 'El relieve tiene partes demasiado finas para imprimir (ver el aviso)' : '';
+  $('#dl3mf').title = $('#dlstl').title = why;
   const sz = model?.size;
   const mm = (x) => String(+x.toFixed(1)).replace('.', ',');
   const holeTxt = sz?.hole ? ` · agujero Ø${mm(sz.hole)} · pared ${mm(sz.wall)}` : '';
@@ -598,6 +603,7 @@ function show2d() {
     ${v.cutter ? `<path d="${pathsToSvg(v.cutter)}" fill="#E8D84A" fill-rule="nonzero"/>` : ''}
     ${v.plate ? `<path d="${pathsToSvg(v.plate)}" fill="${baseCol}" fill-opacity="0.35" stroke="${baseCol}" stroke-width="0.15"/>` : ''}
     <path d="${pathsToSvg(v.art)}" fill="${artCol}" fill-rule="nonzero" opacity="${v.plate ? 1 : 0.5}"/>
+    ${v.thin ? `<path d="${pathsToSvg(v.thin)}" fill="#D8201F" stroke="#D8201F" stroke-width="0.3" stroke-linejoin="round"/>` : ''}
     ${v.socket ? `<circle cx="${v.socket.cx}" cy="${-v.socket.cy}" r="${v.socket.r}" fill="none" stroke="#2B2B2B" stroke-width="0.25" stroke-dasharray="0.8 0.6"/>` : ''}
   </svg>`;
 }

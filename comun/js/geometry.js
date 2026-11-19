@@ -273,6 +273,26 @@ function segDist(x, y, a, b) {
 
 // ---------- Armado de piezas ----------
 
+// Partes del relieve más finas que w (P.minLine): líneas angostas y puntos chicos.
+// Se "abre" la forma (achicar y volver a agrandar w / 2): lo que se pierde es lo que no se
+// puede imprimir. Las puntas de las esquinas también se pierden un poco, pero ahí el slicer
+// solo las redondea: se marcan solo los pedazos de más de 1 mm de largo y las islas que
+// desaparecen enteras.
+function thinParts(paths, w) {
+  const r = w / 2 - 0.001;
+  const opened = offset(offset(paths, -r), r);
+  const out = [];
+  for (const ex of toExPolys(diff(paths, offset(opened, 0.01)))) {
+    const b = bbox([toClip(ex.outer)]);
+    if (Math.max(b.x1 - b.x0, b.y1 - b.y0) >= 1) out.push(toClip(ex.outer));
+  }
+  for (const ex of toExPolys(paths)) {
+    const island = [toClip(ex.outer)];
+    if (areaOf(intersect(island, opened)) < 0.001) out.push(island[0]);
+  }
+  return out.length ? union(out) : [];
+}
+
 const prepareArt = (design, P) => (P.thicken ? union(offset(design.paths, P.thicken)) : design.paths);
 
 // Contorno de la base del sello / interior del cortante.
@@ -299,7 +319,8 @@ export function buildModel(design, P) {
   const outline = computeOutline(art, P);
 
   const parts = [];
-  const view2d = { art, plate: null, cutter: null, socket: null };
+  const view2d = { art, plate: null, cutter: null, socket: null, thin: null };
+  let blocked = false; // true si el diseño no se puede imprimir: se bloquea la descarga
   const withStamp = P.mode !== 'cutter';
   const withCutter = P.mode !== 'stamp';
 
@@ -361,8 +382,16 @@ export function buildModel(design, P) {
         view2d.socket = { cx, cy, r: keyA + P.socketFit };
       }
       // el relieve arranca 0,2 mm dentro de la base para que el slicer lo una
-      const relief = toExPolys(intersect(art, offset(plate, -P.reliefInset)));
+      const reliefPaths = intersect(art, offset(plate, -P.reliefInset));
+      const relief = toExPolys(reliefPaths);
       if (!relief.length) warnings.push('El relieve quedó vacío.');
+      const thin = P.minLine > 0 ? thinParts(reliefPaths, P.minLine) : [];
+      if (thin.length) {
+        blocked = true;
+        view2d.thin = thin;
+        const w = String(P.minLine).replace('.', ',');
+        warnings.push(`Hay partes del relieve de menos de ${w} mm (en rojo en la vista de arriba): no se pueden imprimir bien, así que no se puede descargar. Agrandá el tamaño o subí "Engrosar líneas".`);
+      }
       const split = m.p.length;
       const body = new Float32Array(m.p);
       relief.forEach((e) => extrude(m, e, H - 0.2, H + P.reliefHeight));
@@ -383,7 +412,7 @@ export function buildModel(design, P) {
     }
   }
 
-  return { parts, warnings, view2d, size: mainSize(outline, P), SC };
+  return { parts, warnings, view2d, blocked, size: mainSize(outline, P), SC };
 }
 
 // Tamaño de la pieza principal: el cortante (sin pestaña) o la base del sello.
