@@ -38,3 +38,4 @@ movil/            Solo el armado de pantalla del celular
 3. Si se agrega un archivo nuevo en `comun/` (una librería, una tipografía, un .js), sumarlo a la lista
    `FILES` de `movil/sw.js` para que la app lo tenga sin internet.
 4. Probar las dos versiones antes de dar algo por terminado.
+5. Al publicar, cambiar `VERSION` en `movil/sw.js`: así los celulares instalan la versión nueva la próxima vez que abren la app.

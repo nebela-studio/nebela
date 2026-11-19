@@ -2,6 +2,7 @@
 // Con conexión siempre se pide la versión nueva de cada archivo (así los cambios llegan enseguida);
 // sin conexión se usa la última copia guardada.
 const CACHE = 'disenador-nebela';
+const VERSION = '2026-11-19-matrices'; // cambiarlo en cada publicación hace que el celular instale la nueva enseguida
 
 const FONTS = ['pacifico', 'dancing-script', 'great-vibes', 'sacramento', 'satisfy', 'cookie', 'courgette',
   'kaushan-script', 'lobster', 'caveat', 'patrick-hand', 'amatic-sc', 'playfair-display', 'poppins',
@@ -30,7 +31,9 @@ self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET' || new URL(e.request.url).origin !== location.origin) return;
   e.respondWith(
-    fetch(e.request)
+    // "no-cache": siempre se pregunta al servidor si hay versión nueva. Si no, el celular
+    // usa su copia guardada (GitHub Pages la deja 10 minutos) y los cambios tardan en llegar.
+    fetch(e.request.url, { cache: 'no-cache', credentials: 'same-origin' })
       .then((res) => {
         if (res.ok) {
           const copy = res.clone();

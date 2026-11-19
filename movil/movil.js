@@ -21,5 +21,11 @@ setOpen(true);
 panel.querySelector('.sheet-body').scrollTop = 0;
 
 if ('serviceWorker' in navigator) {
+  // cuando se instala una versión nueva, se recarga una vez para mostrarla sin tener que volver a abrir la app
+  const hadController = !!navigator.serviceWorker.controller;
+  let reloaded = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (hadController && !reloaded) { reloaded = true; location.reload(); }
+  });
   navigator.serviceWorker.register('sw.js').catch(() => { /* sin modo sin conexión */ });
 }
